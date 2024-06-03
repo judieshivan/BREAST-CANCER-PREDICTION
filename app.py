@@ -19,7 +19,7 @@ app.secret_key = "Breast cancer Prediction"
 
 scaler = joblib.load('./models/scaler.pkl')  # The scaler fitted on the training data
 pca = joblib.load('./models/pca.pkl')  # The PCA fitted on the training data
-logreg = joblib.load('./models/logreg.pkl')  # The trained RandomForestClassifier
+logreg = joblib.load('./models/HybridModel.pkl')  # The trained RandomForestClassifier
 
 
 
