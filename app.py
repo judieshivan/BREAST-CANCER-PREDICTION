@@ -3,6 +3,8 @@ import pathlib
 import joblib
 import os
 import pathlib
+
+import mysql.connector
 import requests
 from flask import Flask, session, abort, redirect, request, render_template
 import numpy as np
@@ -105,7 +107,34 @@ def pred1():
 @app.route("/contact")
 def contact():
     return render_template("contact.html", User='Hi, {}'.format(session['name']))
-    
+
+
+@app.route("/history")
+def history():
+    # Establish the connection
+    connection = mysql.connector.connect(
+        host='localhost',  # Hostname of the MySQL server
+        user='root',  # Your MySQL username
+        database='cancer_db'  # Name of the database you want to connect to
+    )
+
+    # Create a cursor object
+    cursor = connection.cursor()
+
+    # Execute a query (corrected to use proper string formatting)
+    user_email = session['name']
+    query = f"SELECT * FROM user_data WHERE user_email = '{user_email}'"
+    cursor.execute(query)
+    # Fetch the results
+    results = cursor.fetchall()
+
+    # Close the cursor and connection
+    cursor.close()
+    connection.close()
+
+    return render_template("History.html", results=results, User='Hi, {}'.format(session['name']))
+
+
 
 @app.route("/pred1_", methods=['POST', 'GET'])
 def pred1_():
@@ -124,12 +153,38 @@ def pred1_():
     # Predict using the trained classifier
     y_pred = logreg.predict(X_pca)
     print("Predicted values for new user input data:", y_pred)
+    result_str=y_pred[0]
+
+    save_prediction_to_db(str(session['name']),int_features, str(result_str))
 
     return render_template("pred1.html", prediction=f'Your predicted value is : {y_pred[0]}',User='Hi, {}'.format(session['name']))
 
     
 
+def save_prediction_to_db(user_email,features, prediction):
+    # Establish the connection
+    connection = mysql.connector.connect(
+        host='localhost',  # Hostname of the MySQL server
+        user='root',  # Your MySQL username
+        database='cancer_db'  # Name of the database you want to connect to
+    )
 
+    # Create a cursor object
+    cursor = connection.cursor()
+
+    # Insert the prediction into the database
+    query = """
+    INSERT INTO user_data (radius_mean, texture_mean, perimeter_mean, area_mean, smoothness_mean, compactness_mean, concavity_mean, concave_points_mean, symmetry_mean, fractal_dimension_mean, radius_se, texture_se, perimeter_se, area_se, smoothness_se, compactness_se, concavity_se, concave_points_se, symmetry_se, fractal_dimension_se, radius_worst, texture_worst, perimeter_worst, area_worst, smoothness_worst, compactness_worst, concavity_worst, concave_points_worst, symmetry_worst, fractal_dimension_worst, result,user_email)
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,%s)
+    """
+    cursor.execute(query, (*features, prediction,str(user_email),))
+
+    # Commit the transaction
+    connection.commit()
+
+    # Close the cursor and connection
+    cursor.close()
+    connection.close()
 
 
 
